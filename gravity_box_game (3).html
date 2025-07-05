@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>重力方塊遊戲</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #222; color: white; font-family: sans-serif; text-align: center; }
+    canvas { background: #444; margin-top: 20px; display: block; margin-left: auto; margin-right: auto; }
+    #score, #timer { font-size: 24px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <div id="score">分數: 0</div>
+  <div id="timer">剩餘時間: 60</div>
+  <canvas id="gameCanvas" width="500" height="500"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const boxSize = 50;
+    const player = { x: 225, y: 225, vx: 0, vy: 0, angle: 0 };
+    let gravity = { x: 0, y: 0.2 }; // 初始向下的重力
+    let score = 0;
+    let timeLeft = 60;
+    let ball = spawnBall();
+
+    function spawnBall() {
+      const margin = 10;
+      return {
+        x: Math.floor(Math.random() * (canvas.width - boxSize - margin * 2)) + margin,
+        y: Math.floor(Math.random() * (canvas.height - boxSize - margin * 2)) + margin
+      };
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp")    gravity = { x: 0, y: -0.2 };
+      else if (e.key === "ArrowDown") gravity = { x: 0, y: 0.2 };
+      else if (e.key === "ArrowLeft") gravity = { x: -0.2, y: 0 };
+      else if (e.key === "ArrowRight") gravity = { x: 0.2, y: 0 };
+    });
+
+    function update() {
+      // 加入重力影響
+      player.vx += gravity.x;
+      player.vy += gravity.y;
+
+      // 移動
+      player.x += player.vx;
+      player.y += player.vy;
+
+      // 根據速度改變旋轉角度（速度越大轉得越快）
+      const speed = Math.sqrt(player.vx ** 2 + player.vy ** 2);
+      player.angle += speed * 0.02; // 可微調旋轉比例
+
+      // 邊界限制
+      if (player.x < 0) { player.x = 0; player.vx *= -0.5; }
+      if (player.y < 0) { player.y = 0; player.vy *= -0.5; }
+      if (player.x + boxSize > canvas.width) {
+        player.x = canvas.width - boxSize;
+        player.vx *= -0.5;
+      }
+      if (player.y + boxSize > canvas.height) {
+        player.y = canvas.height - boxSize;
+        player.vy *= -0.5;
+      }
+
+      // 吃到球
+      if (Math.abs(player.x - ball.x) < boxSize && Math.abs(player.y - ball.y) < boxSize) {
+        score++;
+        document.getElementById("score").textContent = "分數: " + score;
+        ball = spawnBall();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 外方塊框線
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+      // 畫玩家方塊（根據速度旋轉）
+      ctx.save();
+      ctx.translate(player.x + boxSize / 2, player.y + boxSize / 2);
+      ctx.rotate(player.angle);
+      ctx.fillStyle = "cyan";
+      ctx.fillRect(-boxSize / 2, -boxSize / 2, boxSize, boxSize);
+      ctx.restore();
+
+      // 黃色圓球
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(ball.x + boxSize / 2, ball.y + boxSize / 2, boxSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    let lastTime = 0;
+    function gameLoop(timestamp) {
+      if (timeLeft <= 0) return;
+      if (timestamp - lastTime >= 1000 / 60) {
+        lastTime = timestamp;
+        update();
+        draw();
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    function countdown() {
+      if (timeLeft > 0) {
+        timeLeft--;
+        document.getElementById("timer").textContent = "剩餘時間: " + timeLeft;
+        setTimeout(countdown, 1000);
+      } else {
+        alert("時間到！你的分數是 " + score);
+      }
+    }
+
+    requestAnimationFrame(gameLoop);
+    countdown();
+  </script>
+</body>
+</html>
